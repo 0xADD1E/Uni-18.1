@@ -58,6 +58,7 @@ def gen_key(silent, *_):
         print('Private Exponent: ', d)
     return key(n, e, d)
 
+
 def encrypt(silent, pubkey, mod, plaintext):
     """Take a user's pubkey and a plaintext, and encrypt it"""
     # Why can't assert be a function like everything else? Whyyyyyyyy
@@ -65,15 +66,17 @@ def encrypt(silent, pubkey, mod, plaintext):
     assert mod, 'Modulus is required for encryption'
     assert plaintext, 'Plaintext is required for encryption'
 
-    ords = [ord(x)-ord('A') for x in plaintext.upper()]
-    crypts = [(x**pubkey)%mod for x in ords]
+    ords = [ord(x) - ord('A') for x in plaintext.upper()]
+    crypts = [(x**pubkey) % mod for x in ords]
     alpha_crypts = [str(x) for x in crypts]
     ciphertext = ' '.join(alpha_crypts)
 
     if not silent:
-        print('Encrypting "{}" with key {} and mod {}'.format(plaintext, pubkey, mod))
+        print('Encrypting "{}" with key {} and mod {}'.format(
+            plaintext, pubkey, mod))
         print(ciphertext)
     return ciphertext
+
 
 def decrypt(silent, privkey, mod, ciphertext):
     """Take a user's privkey and a ciphertext, and decrypt it"""
@@ -83,28 +86,35 @@ def decrypt(silent, privkey, mod, ciphertext):
 
     ints = [int(x) for x in ciphertext.split(' ')]
     plains = [(x**privkey) % mod for x in ints]
-    alpha_plains = [chr(x+ord('A')) for x in plains]
-    clean_string = [' ' if ord(x) not in range(ord('A'), ord('Z')+1) else x for x in alpha_plains]
+    alpha_plains = [chr(x + ord('A')) for x in plains]
+    clean_string = [' ' if ord(x) not in range(ord('A'), ord('Z') + 1) else x for x in alpha_plains]
     plaintext = ''.join(clean_string)
 
     if not silent:
-        print('Decrypting "{}" with key {} and mod {}'.format(ciphertext, privkey, mod))
+        print('Decrypting "{}" with key {} and mod {}'.format(
+            ciphertext, privkey, mod))
         print(plaintext)
     return plaintext
 
+
 def test(*_):
-    """Perform a full message exchange"""
+    """Perform a whole bunch of full message exchanges"""
     import requests
     wordlist_url = 'http://svnweb.freebsd.org/csrg/share/dict/words?view=co&content-type=text/plain'
     words = requests.get(wordlist_url).content.decode('utf-8').splitlines()
 
-    for i in range(100):
+    def simplify(string):
+        """Take out all non-alpha text for punctuation insensitive comparison"""
+        return ''.join([x for x in string if ord(x) in range(ord('A'), ord('Z') + 1)])
+
+    for i in range(10000):
         test_key = gen_key(True)
 
         message = ' '.join([random.choice(words) for _ in range(5)]).upper()
         ciphertext = encrypt(True, test_key.public, test_key.mod, message)
         plaintext = decrypt(True, test_key.private, test_key.mod, ciphertext)
-        if plaintext != message:
+
+        if simplify(plaintext) != simplify(message):
             print(message)
             print(plaintext)
             response = input('Do these look similar? (y or n)')
@@ -122,17 +132,13 @@ def test(*_):
 if __name__ == '__main__':
     PARSER = argparse.ArgumentParser(description='Do some kid RSA')
     MODES = PARSER.add_mutually_exclusive_group(required=True)
-    MODES.add_argument('--gen-key', dest='mode', action='store_const',
-                       const=gen_key,
+    MODES.add_argument('--gen-key', dest='mode', action='store_const', const=gen_key,
                        help='Run in key generation mode')
-    MODES.add_argument('--encrypt', dest='mode', action='store_const',
-                       const=encrypt,
+    MODES.add_argument('--encrypt', dest='mode', action='store_const', const=encrypt,
                        help='Encrypt a message using the public key from --key/--mod')
-    MODES.add_argument('--decrypt', dest='mode', action='store_const',
-                       const=decrypt,
+    MODES.add_argument('--decrypt', dest='mode', action='store_const', const=decrypt,
                        help='Decrypt a message using the private key from --key/--mod')
-    MODES.add_argument('--full-test', dest='mode', action='store_const',
-                       const=test,
+    MODES.add_argument('--full-test', dest='mode', action='store_const', const=test,
                        help='Encrypt and decrypt messages to and from two parties for testing')
     PARSER.add_argument('--key', dest='key', action='store', type=int,
                         help='The key to use for encryption/decryption')
