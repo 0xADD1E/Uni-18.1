@@ -1,0 +1,144 @@
+"""
+Cute lil kid RSA module for Discrete Structures
+
+Beware the padding oracle
+...and birthday paradox
+...and literally every other attack against RSA ever
+
+...(please don't use this for anything outside a maths course)
+"""
+# pylint: disable=C0103
+# Because apparently λn is not a PEP8 approved name :(
+import random
+import argparse
+from collections import namedtuple
+from sympy import lcm as sp_lcm
+from sympy import sieve as sp_sieve
+
+UPPER_PRIME_BOUND = 100
+
+key = namedtuple('Key', 'mod public private')
+
+def gen_key(silent, *_):
+    """Generate and print a new private/public keypair"""
+    def getPrime(bound=UPPER_PRIME_BOUND):
+        """Get a prime number"""
+        prime_list = list(sp_sieve.primerange(6, bound))
+        return random.choice(prime_list)
+
+    def getPrimePair():
+        """Get a pair of unique primes"""
+        p = getPrime()
+        q = p
+        while q == p:
+            q = getPrime()
+        return p, q
+
+    def getCoprime(λn):
+        """Get a number coprime to, and less than λn"""
+        candidate = getPrime(λn)
+        if λn % candidate != 0:
+            return candidate
+        return getCoprime(λn)
+
+    def getMultModInv(e, λn):
+        """Get a multiplicative modular inverse for the whatever"""
+        candidates = [x for x in range(λn) if (e * x) % λn == 1]
+        return random.choice(candidates)
+
+    p, q = getPrimePair()
+    n = p * q
+    λn = sp_lcm(p - 1, q - 1)
+    e = getCoprime(λn)
+    d = getMultModInv(e, λn)
+
+    if not silent:
+        print('Modulus: ', n)
+        print('Public Exponent: ', e)
+        print('Private Exponent: ', d)
+    return key(n, e, d)
+
+def encrypt(silent, pubkey, mod, plaintext):
+    """Take a user's pubkey and a plaintext, and encrypt it"""
+    # Why can't assert be a function like everything else? Whyyyyyyyy
+    assert pubkey, 'Public key is required for encryption'
+    assert mod, 'Modulus is required for encryption'
+    assert plaintext, 'Plaintext is required for encryption'
+
+    ords = [ord(x)-ord('A') for x in plaintext.upper()]
+    crypts = [(x**pubkey)%mod for x in ords]
+    alpha_crypts = [str(x) for x in crypts]
+    ciphertext = ' '.join(alpha_crypts)
+
+    if not silent:
+        print('Encrypting "{}" with key {} and mod {}'.format(plaintext, pubkey, mod))
+        print(ciphertext)
+    return ciphertext
+
+def decrypt(silent, privkey, mod, ciphertext):
+    """Take a user's privkey and a ciphertext, and decrypt it"""
+    assert privkey, 'Private key is required for decryption'
+    assert mod, 'Modulus is required for decryption'
+    assert ciphertext, 'Ciphertext is required for decryption'
+
+    ints = [int(x) for x in ciphertext.split(' ')]
+    plains = [(x**privkey) % mod for x in ints]
+    alpha_plains = [chr(x+ord('A')) for x in plains]
+    clean_string = [' ' if ord(x) not in range(ord('A'), ord('Z')+1) else x for x in alpha_plains]
+    plaintext = ''.join(clean_string)
+
+    if not silent:
+        print('Decrypting "{}" with key {} and mod {}'.format(ciphertext, privkey, mod))
+        print(plaintext)
+    return plaintext
+
+def test(*_):
+    """Perform a full message exchange"""
+    import requests
+    wordlist_url = 'http://svnweb.freebsd.org/csrg/share/dict/words?view=co&content-type=text/plain'
+    words = requests.get(wordlist_url).content.decode('utf-8').splitlines()
+
+    for i in range(100):
+        test_key = gen_key(True)
+
+        message = ' '.join([random.choice(words) for _ in range(5)]).upper()
+        ciphertext = encrypt(True, test_key.public, test_key.mod, message)
+        plaintext = decrypt(True, test_key.private, test_key.mod, ciphertext)
+        if plaintext != message:
+            print(message)
+            print(plaintext)
+            response = input('Do these look similar? (y or n)')
+            if response.lower() != 'y':
+                print('{}x PASS'.format(i))
+                print('Key: ', test_key)
+                print('Message: ', message)
+                print('Ciphertext: ', ciphertext)
+                print('Plaintext: ', plaintext)
+                print('FAILURE')
+                return
+    print('PASS')
+
+
+if __name__ == '__main__':
+    PARSER = argparse.ArgumentParser(description='Do some kid RSA')
+    MODES = PARSER.add_mutually_exclusive_group(required=True)
+    MODES.add_argument('--gen-key', dest='mode', action='store_const',
+                       const=gen_key,
+                       help='Run in key generation mode')
+    MODES.add_argument('--encrypt', dest='mode', action='store_const',
+                       const=encrypt,
+                       help='Encrypt a message using the public key from --key/--mod')
+    MODES.add_argument('--decrypt', dest='mode', action='store_const',
+                       const=decrypt,
+                       help='Decrypt a message using the private key from --key/--mod')
+    MODES.add_argument('--full-test', dest='mode', action='store_const',
+                       const=test,
+                       help='Encrypt and decrypt messages to and from two parties for testing')
+    PARSER.add_argument('--key', dest='key', action='store', type=int,
+                        help='The key to use for encryption/decryption')
+    PARSER.add_argument('--mod', dest='mod', action='store', type=int,
+                        help='The modulus to use for encryption/decryption')
+    PARSER.add_argument('text', action='store', nargs='?', default='',
+                        help='The plain or ciphertext to encrypt/decrypt')
+    ARGS = PARSER.parse_args()
+    ARGS.mode(False, ARGS.key, ARGS.mod, ARGS.text)
