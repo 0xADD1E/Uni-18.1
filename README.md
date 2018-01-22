@@ -12,4 +12,5 @@
 - GNU Prolog
 
 ### Discrete Mathematics
-- Python3
+- Python 3
+
