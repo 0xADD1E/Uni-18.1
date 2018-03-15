@@ -15,15 +15,21 @@ from collections import namedtuple
 from sympy import lcm as sp_lcm
 from sympy import sieve as sp_sieve
 
-UPPER_PRIME_BOUND = 100
+UPPER_PRIME_BOUND = 10000
+LOWER_PRIME_BOUND = 55
 
 key = namedtuple('Key', 'mod public private')
-
+def splitList(lst, count=2, default=None, padFront=False):
+    deficit = len(lst) % count
+    if not deficit == 0 and default:
+        for _ in range(deficit + 1):
+            lst.append(default)
+    return [lst[i:i+count] for i in range(0, len(lst), count)]
 def gen_key(silent, *_):
     """Generate and print a new private/public keypair"""
-    def getPrime(bound=UPPER_PRIME_BOUND):
+    def getPrime(upperbound=UPPER_PRIME_BOUND, lowerbound=LOWER_PRIME_BOUND):
         """Get a prime number"""
-        prime_list = list(sp_sieve.primerange(6, bound))
+        prime_list = list(sp_sieve.primerange(lowerbound, upperbound))
         return random.choice(prime_list)
 
     def getPrimePair():
@@ -32,11 +38,13 @@ def gen_key(silent, *_):
         q = p
         while q == p:
             q = getPrime()
+        #return 127, 9721
         return p, q
 
     def getCoprime(λn):
         """Get a number coprime to, and less than λn"""
         candidate = getPrime(λn)
+        #candidate = 751
         if λn % candidate != 0:
             return candidate
         return getCoprime(λn)
@@ -67,7 +75,9 @@ def encrypt(silent, pubkey, mod, plaintext):
     assert plaintext, 'Plaintext is required for encryption'
 
     ords = [ord(x) - ord('A') for x in plaintext.upper()]
-    crypts = [(x**pubkey) % mod for x in ords]
+    zeroPrefixed = [('0' if x < 10 else '') + str(x) for x in ords]
+    grouped = [int(a+b+c) for a,b,c in splitList(zeroPrefixed, 3, '23')] # Pad with 'X'
+    crypts = [(x**pubkey) % mod for x in grouped]
     alpha_crypts = [str(x) for x in crypts]
     ciphertext = ' '.join(alpha_crypts)
 
@@ -84,11 +94,14 @@ def decrypt(silent, privkey, mod, ciphertext):
     assert mod, 'Modulus is required for decryption'
     assert ciphertext, 'Ciphertext is required for decryption'
 
-    ints = [int(x) for x in ciphertext.split(' ')]
-    plains = [(x**privkey) % mod for x in ints]
-    alpha_plains = [chr(x + ord('A')) for x in plains]
-    clean_string = [' ' if ord(x) not in range(ord('A'), ord('Z') + 1) else x for x in alpha_plains]
-    plaintext = ''.join(clean_string)
+    result = []
+    for x in ciphertext.split(' '):
+        decrypted_chunk = str((int(x)**privkey) % mod)
+        if len(decrypted_chunk) < 6:
+            decrypted_chunk = '0'+decrypted_chunk
+        for char in splitList(decrypted_chunk, 2):
+            result.append(chr(int(char) + ord('A')))
+    plaintext = ''.join(result)
 
     if not silent:
         print('Decrypting "{}" with key {} and mod {}'.format(
