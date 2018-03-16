@@ -15,16 +15,19 @@ from collections import namedtuple
 from sympy import lcm as sp_lcm
 from sympy import sieve as sp_sieve
 
-UPPER_PRIME_BOUND = 10000
+UPPER_PRIME_BOUND = 1000
 LOWER_PRIME_BOUND = 55
+N_TEST_ITERATIONS = 1000
 
 key = namedtuple('Key', 'mod public private')
-def splitList(lst, count=2, default=None, padFront=False):
-    deficit = len(lst) % count
-    if not deficit == 0 and default:
-        for _ in range(deficit + 1):
-            lst.append(default)
+def splitList(lst, count=2):
     return [lst[i:i+count] for i in range(0, len(lst), count)]
+def block_length(mod):
+    if mod < 252525:
+        return 2
+    elif mod < 25252525:
+        return 3
+    return 4
 def gen_key(silent, *_):
     """Generate and print a new private/public keypair"""
     def getPrime(upperbound=UPPER_PRIME_BOUND, lowerbound=LOWER_PRIME_BOUND):
@@ -38,13 +41,11 @@ def gen_key(silent, *_):
         q = p
         while q == p:
             q = getPrime()
-        #return 127, 9721
         return p, q
 
     def getCoprime(λn):
         """Get a number coprime to, and less than λn"""
         candidate = getPrime(λn)
-        #candidate = 751
         if λn % candidate != 0:
             return candidate
         return getCoprime(λn)
@@ -74,10 +75,14 @@ def encrypt(silent, pubkey, mod, plaintext):
     assert mod, 'Modulus is required for encryption'
     assert plaintext, 'Plaintext is required for encryption'
 
+    CHARS_PER_BLOCK = block_length(mod)
+
     ords = [ord(x) - ord('A') for x in plaintext.upper()]
-    zeroPrefixed = [('0' if x < 10 else '') + str(x) for x in ords]
-    grouped = [int(a+b+c) for a,b,c in splitList(zeroPrefixed, 3, '23')] # Pad with 'X'
-    crypts = [(x**pubkey) % mod for x in grouped]
+    zeroPrefixed = [str(x).zfill(2) for x in ords]
+    while len(zeroPrefixed)%CHARS_PER_BLOCK:
+        zeroPrefixed.append('23')
+    grouped = [int(''.join(x)) for x in splitList(zeroPrefixed, CHARS_PER_BLOCK)]
+    crypts = [pow(x, pubkey, mod) for x in grouped]
     alpha_crypts = [str(x) for x in crypts]
     ciphertext = ' '.join(alpha_crypts)
 
@@ -94,11 +99,11 @@ def decrypt(silent, privkey, mod, ciphertext):
     assert mod, 'Modulus is required for decryption'
     assert ciphertext, 'Ciphertext is required for decryption'
 
+    CHARS_PER_BLOCK = block_length(mod)
+
     result = []
     for x in ciphertext.split(' '):
-        decrypted_chunk = str((int(x)**privkey) % mod)
-        if len(decrypted_chunk) < 6:
-            decrypted_chunk = '0'+decrypted_chunk
+        decrypted_chunk = str(pow(int(x), privkey, mod)).zfill(2*CHARS_PER_BLOCK)
         for char in splitList(decrypted_chunk, 2):
             result.append(chr(int(char) + ord('A')))
     plaintext = ''.join(result)
@@ -112,22 +117,21 @@ def decrypt(silent, privkey, mod, ciphertext):
 
 def test(*_):
     """Perform a whole bunch of full message exchanges"""
-    import requests
-    wordlist_url = 'http://svnweb.freebsd.org/csrg/share/dict/words?view=co&content-type=text/plain'
-    words = requests.get(wordlist_url).content.decode('utf-8').splitlines()
+    with open('wordlist.txt', 'r') as myFile:
+        words = [x.replace('\n','') for x in myFile.readlines() if '\'' not in x]
 
     def simplify(string):
         """Take out all non-alpha text for punctuation insensitive comparison"""
         return ''.join([x for x in string if ord(x) in range(ord('A'), ord('Z') + 1)])
 
-    for i in range(10000):
+    for i in range(N_TEST_ITERATIONS):
         test_key = gen_key(True)
 
-        message = ' '.join([random.choice(words) for _ in range(5)]).upper()
+        message = ''.join([random.choice(words) for _ in range(5)]).upper()
         ciphertext = encrypt(True, test_key.public, test_key.mod, message)
         plaintext = decrypt(True, test_key.private, test_key.mod, ciphertext)
 
-        if simplify(plaintext) != simplify(message):
+        if simplify(plaintext)[:len(message)] != simplify(message):
             print(message)
             print(plaintext)
             response = input('Do these look similar? (y or n)')
