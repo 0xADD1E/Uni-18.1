@@ -38,8 +38,8 @@ int Buffer::removeItem(){
     sem_wait(&full);
     bufferAccess.lock();
 
-    int toReturn = store.back();
-    store.pop_back();
+    int toReturn = store.front();
+    store.pop_front();
 
     bufferAccess.unlock();
     sem_post(&empty);

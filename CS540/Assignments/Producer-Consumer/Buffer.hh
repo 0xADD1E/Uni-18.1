@@ -4,14 +4,14 @@
  * akmorrison@shockers.wichita.edu
  * 0xADD1E@gmail.com
  */
-#include <vector>
+#include <deque>
 #include <mutex>
 #include <semaphore.h>
 #include <iostream>
 
 #define SIZE 5
 class Buffer{
-    std::vector<int> store;
+    std::deque<int> store;
     std::mutex bufferAccess;
     sem_t empty, full;
 public:
