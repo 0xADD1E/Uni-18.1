@@ -3,6 +3,9 @@ aunt(A,X) :- sister(A,B), parent(B,X).
 parent(P,C) :- father(P,C).
 parent(P,C) :- mother(P,C).
 
+ancestor(P,C) :- parent(P,C).
+ancestor(P,C) :- parent(P, X), ancestor(X,C).
+
 cousin(C,S) :- parent(F,C), sibling(F,B), parent(B,S).
 
 sibling(C,S) :- brother(C,S).
@@ -15,6 +18,9 @@ father(john,will).
 father(frank,tom).
 father(frank,gary).
 father(frank,mary).
+father(tom, bob).
+father(bob, ann).
+father(bob, pat).
 
 mother(beth,linda).
 mother(beth,harry).
@@ -23,6 +29,7 @@ mother(janice,will).
 mother(liz,tom).
 mother(liz,gary).
 mother(liz,mary).
+mother(pam, bob).
 
 sister(linda,harry).
 sister(mary,tom).
@@ -41,3 +48,4 @@ brother(john,beth).
 brother(john,frank).
 brother(frank,john).
 brother(frank,beth).
+
