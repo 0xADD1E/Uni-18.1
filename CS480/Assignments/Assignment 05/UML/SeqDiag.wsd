@@ -1,0 +1,5 @@
+@startuml SeqDiag
+class whocares{
+    something
+}
+@enduml

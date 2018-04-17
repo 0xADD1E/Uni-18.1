@@ -1,0 +1,34 @@
+@startuml ClassDiag
+Transaction *- Customer
+Transaction *-- RentalItem
+RentalItem *- Category
+
+class Customer{
+    #name
+    #rewardPoints
+}
+note right
+<b>Reward Points</b>
+10 point for childrens or regular movie
+10 bonus points for new releases
+(20 total points for new release)
+end note
+class Transaction{
+    #customer
+    #date
+    #items
+    #summary()
+}
+class RentalItem {
+    #name
+    #pricePerNight
+    #category
+    #releaseDate
+    #isRecentRelease()
+}
+enum Category{
+    Regular
+    Childrens
+}
+note bottom: Recent Releases are calculated based on release\ndate instead of being another category
+@enduml
