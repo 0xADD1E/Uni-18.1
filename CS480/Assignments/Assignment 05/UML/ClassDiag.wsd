@@ -1,34 +1,50 @@
 @startuml ClassDiag
-Transaction *- Customer
-Transaction *-- RentalItem
+Transaction -* Customer
+Transaction *-- TransactionItem
+TransactionItem *- RentalItem
 RentalItem *- Category
 
 class Customer{
     #name
     #rewardPoints
+    #transactions
+    #<<(ostream, self)
+    #addTransaction(Transaction)
 }
 note right
 <b>Reward Points</b>
 10 point for childrens or regular movie
-10 bonus points for new releases
-(20 total points for new release)
+20 points for new release
 end note
 class Transaction{
-    #customer
-    #date
     #items
-    #summary()
+    #<<(ostream, self)
+    #addItem(TransactionItem)
+    #totalCost()
+    #totalPoints()
+}
+class TransactionItem{
+    #item
+    #days
+    #<<(ostream, self)
+    #rentalCost()
+    #rewardPoints()
 }
 class RentalItem {
     #name
-    #pricePerNight
     #category
-    #releaseDate
-    #isRecentRelease()
+    #<<(ostream, self)
+    #pricePerNight()
 }
+note bottom
+<b>Pricing</b>
+$1.00/night for Regular
+$0.75/night for Childrens
+$1.50/night for New Releases
+end note
 enum Category{
     Regular
     Childrens
+    NewRelease
 }
-note bottom: Recent Releases are calculated based on release\ndate instead of being another category
 @enduml
