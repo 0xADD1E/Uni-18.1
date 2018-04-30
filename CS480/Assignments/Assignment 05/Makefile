@@ -1,4 +1,4 @@
-.PHONY: run
+.PHONY: run codetest
 
 all: deliverable
 code: Code/*
@@ -7,10 +7,10 @@ codetest: code
 	cd Code && $(MAKE) clean
 run:
 	cd Code && $(MAKE) run
-uml: UML/*
+VideoStore-UML.pdf: UML/*
 	cd UML && $(MAKE) all
 	cd UML && $(MAKE) clean
-deliverable: uml codetest
+deliverable: VideoStore-UML.pdf codetest
 	zip -r VideoStore-imp Code VideoStore-UML.pdf
 clean:
 	cd Code && $(MAKE) clean

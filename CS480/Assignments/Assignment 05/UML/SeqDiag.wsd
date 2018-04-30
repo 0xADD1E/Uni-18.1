@@ -1,2 +1,52 @@
 @startuml SeqDiag
+actor User
+participant App
+database DB
+note right
+Not yet implemented
+Local std::vector used instead
+end note
+== User Setup ==
+User ->  App : Select "New User"
+User <-- App : Request Username
+User ->  App : Provide Username
+App -> DB : Create User
+
+== Catalog Setup ==
+User -> App : Select "New Catalog Item"
+User <-- App: Request Item Name
+User -> App : Provide Item Name
+App -> DB : Create RentalItem
+
+== Catalog Review ==
+User -> App : Select "Print Catalog"
+App -> DB : Request catalog items
+App <- DB : Catalog items
+loop For each item
+    User <- App : Print item
+end
+
+== Transaction Creation ==
+
+User -> App : Select "New Transaction"
+User <-- App: Request user making transaction
+User -> App: Provide Username
+loop For each item
+    User <-- App : Request nth item name
+    User -> App : Provide item name
+    User <-- App: Request days rented
+    User -> App: Provide days rented
+    App -> DB : Create TransactionItem
+end
+App -> DB : Create Transaction with selected TransactionItems
+
+== Customer/Transaction Review ==
+User -> App : Select "Print Customer Summary"
+App -> DB: Request customer info
+App <- DB: Customer info
+User <- App : Print customer Name/points
+loop For each transaction
+    User <- App : Print transaction summary
+end
+User <- App : Print total money spent
 @enduml
